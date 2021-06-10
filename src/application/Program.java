@@ -9,49 +9,50 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 
 import db.DB;
+import db.DBIntegrityException;
+import db.DbException;
 
 public class Program {
 
 	public static void main(String[] args) {
-		SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
 		Connection conn = null;
 		PreparedStatement st = null;
-		ResultSet rs = null;
 		
 		try {
 			conn = DB.getConnection();
 			
-			st = conn.prepareStatement("insert into seller "
-					+ "(Name, Email, BirthDate, BaseSalary, DepartmentId) "
-					+ "values (?,?,?,?,?) ", 
-					Statement.RETURN_GENERATED_KEYS);
+			conn.setAutoCommit(false);
 			
-			st.setString(1, "KarlTheGuy");
-			st.setString(2, "Karl@gmail.com");
-			st.setDate(3, new java.sql.Date(sdf.parse("27/11/2000").getTime()));
-			st.setDouble(4, 5000);
-			st.setInt(5, 4);
-			int rowsAffected = st.executeUpdate();
-			if(rowsAffected > 0) {
-				rs = st.getGeneratedKeys();
-				while(rs.next()) {
-					int id = rs.getInt(1);
-					System.out.println("Id: "+id);
-				}
+			st = conn.prepareStatement("update seller set BaseSalary = 29090 where Id in (2,4)");
+			
+			int row1 = st.executeUpdate();
+			if(row1 < 2) {
+				throw new SQLException("Fake error");
 			}
+			int row2 = st.executeUpdate("update seller set BaseSalary = 200 where Id = 3");
+			
+			
+			conn.commit();
+			
+			System.out.println("row1: " + row1);
+			System.out.println("row2: " + row2);
+
+			int rowsAffected = st.executeUpdate();
+			System.out.println("Rows Affected: "+ rowsAffected);
 			
 		}
 		catch(SQLException e) {
-			e.printStackTrace();
-		}
-		catch(ParseException e) {
-			e.printStackTrace();
+			try {
+				conn.rollback();
+				throw new DbException("Rolledback! Cause by: " + e.getMessage());
+			} catch (SQLException e1) {
+				throw new DbException("Error: " + e1.getMessage());
+			}
 		}
 		finally {
 			DB.closeConnection();
 			DB.closeStatement(st);
-			DB.closeResultSet(rs);		}
-		
+		}
 	}
 
 }
