@@ -10,6 +10,7 @@ import java.text.SimpleDateFormat;
 
 import db.DB;
 import db.DBIntegrityException;
+import db.DbException;
 
 public class Program {
 
@@ -20,19 +21,33 @@ public class Program {
 		try {
 			conn = DB.getConnection();
 			
-			st = conn.prepareStatement(
-					" delete from department "
-					+ " WHERE "
-					+ " (Id = ?)");
+			conn.setAutoCommit(false);
 			
-			st.setInt(1, 2);
+			st = conn.prepareStatement("update seller set BaseSalary = 29090 where Id in (2,4)");
+			
+			int row1 = st.executeUpdate();
+			if(row1 < 2) {
+				throw new SQLException("Fake error");
+			}
+			int row2 = st.executeUpdate("update seller set BaseSalary = 200 where Id = 3");
+			
+			
+			conn.commit();
+			
+			System.out.println("row1: " + row1);
+			System.out.println("row2: " + row2);
 
 			int rowsAffected = st.executeUpdate();
 			System.out.println("Rows Affected: "+ rowsAffected);
 			
 		}
 		catch(SQLException e) {
-			throw new DBIntegrityException(e.getMessage());
+			try {
+				conn.rollback();
+				throw new DbException("Rolledback! Cause by: " + e.getMessage());
+			} catch (SQLException e1) {
+				throw new DbException("Error: " + e1.getMessage());
+			}
 		}
 		finally {
 			DB.closeConnection();
